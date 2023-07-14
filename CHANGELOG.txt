@@ -10,6 +10,12 @@ argument in `setup.py`. Python 3.4 is not supported by this release. There was a
 mistake releasing 4.4 as "3.5+ only", which made it necessary to retag 4.3 as
 4.5 as well.
 
+- Fix #165: CVE-2020-25658 - Bleichenbacher-style timing oracle in PKCS#1 v1.5
+  decryption code
+
+
+## Version 4.4 & 4.6 - released 2020-06-12
+
 Two security fixes have also been backported, so 4.3 = 4.0 + these two fixes.
 
 - Choose blinding factor relatively prime to N. Thanks Christian Heimes for pointing this out.
