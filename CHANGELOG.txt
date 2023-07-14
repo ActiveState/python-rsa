@@ -8,6 +8,12 @@ Version 4.3 is almost a re-tagged release of version 4.0. It is the last to
 support Python 2.7. This is now made explicit in the `python_requires` argument
 in `setup.py`. Python 3.4 is not supported by this release.
 
+- Fix #165: CVE-2020-25658 - Bleichenbacher-style timing oracle in PKCS#1 v1.5
+  decryption code
+
+
+## Version 4.4 & 4.6 - released 2020-06-12
+
 Two security fixes have also been backported, so 4.3 = 4.0 + these two fixes.
 
 - Choose blinding factor relatively prime to N. Thanks Christian Heimes for pointing this out.
