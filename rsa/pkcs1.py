@@ -31,6 +31,7 @@ to your users.
 import hashlib
 import os
 import sys
+import typing
 from hmac import compare_digest
 
 from rsa._compat import range
