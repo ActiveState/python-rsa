@@ -182,3 +182,40 @@ class SignatureTest(unittest.TestCase):
         signature = signature + b'\00\00'
         with self.assertRaises(rsa.VerificationError):
             pkcs1.verify(message, signature, self.pub)
+
+
+class DecryptionFailureTest(unittest.TestCase):
+    """CVE-2020-25658: every malformed cleartext still fails, through one combined check."""
+
+    def setUp(self):
+        (self.pub, self.priv) = rsa.newkeys(512)
+        self.keylength = rsa.common.byte_size(self.pub.n)
+
+    def encrypt_raw(self, padded):
+        self.assertEqual(len(padded), self.keylength)
+        payload = rsa.transform.bytes2int(padded)
+        encrypted_value = rsa.core.encrypt_int(payload, self.pub.e, self.pub.n)
+        return rsa.transform.int2bytes(encrypted_value, self.keylength)
+
+    def block(self, marker, message, separator=b'\x00'):
+        pad_len = self.keylength - len(marker) - len(separator) - len(message)
+        return marker + b'\x01' * pad_len + separator + message
+
+    def test_valid_padding_decrypts(self):
+        crypto = self.encrypt_raw(self.block(b'\x00\x02', b'secret'))
+        self.assertEqual(rsa.decrypt(crypto, self.priv), b'secret')
+
+    def test_bad_marker(self):
+        crypto = self.encrypt_raw(self.block(b'\x00\x01', b'secret'))
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(crypto, self.priv)
+
+    def test_no_separator(self):
+        crypto = self.encrypt_raw(self.block(b'\x00\x02', b'', separator=b''))
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(crypto, self.priv)
+
+    def test_crypto_longer_than_block(self):
+        crypto = b'\x00' + pkcs1.encrypt(b'secret', self.pub)
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(crypto, self.priv)
