@@ -247,7 +247,13 @@ def decrypt(crypto, priv_key):
 
     # Find the 00 separator between the padding and the message
     sep_idx = cleartext.find(b'\x00', 2)
-    sep_idx_bad = sep_idx < 0
+
+    # sep_idx indicates the position of the `\x00` separator that separates the
+    # padding from the actual message. The padding should be at least 8 bytes
+    # long (see https://tools.ietf.org/html/rfc8017#section-7.2.2 step 3), which
+    # means the separator should be at least at index 10 (because of the
+    # `\x00\x02` marker that preceeds it).
+    sep_idx_bad = sep_idx < 10
 
     anything_bad = cleartext_marker_bad | sep_idx_bad
     if anything_bad:
