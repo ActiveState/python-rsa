@@ -1,6 +1,17 @@
 Python-RSA changelog
 ========================================
 
+Version 4.5.post1 - ActiveState security release
+----------------------------------------
+
+Python 2.7 security release of 4.5 from the ActiveState fork.
+
+- Fix #165: CVE-2020-25658 - Bleichenbacher-style timing oracle in PKCS#1 v1.5
+  decryption code. Backport of upstream 4.7 (dae8ce0, f254895, 341e5c4).
+- Fix #164: reject PKCS#1 v1.5 padding shorter than 8 bytes (RFC 8017 section
+  7.2.2). Backport of upstream 4.7 (f878c37).
+
+
 Version 4.3 & 4.5 - released 2020-06-12
 ----------------------------------------
 
@@ -9,12 +20,6 @@ last to support Python 2.7. This is now made explicit in the `python_requires`
 argument in `setup.py`. Python 3.4 is not supported by this release. There was a
 mistake releasing 4.4 as "3.5+ only", which made it necessary to retag 4.3 as
 4.5 as well.
-
-- Fix #165: CVE-2020-25658 - Bleichenbacher-style timing oracle in PKCS#1 v1.5
-  decryption code
-
-
-## Version 4.4 & 4.6 - released 2020-06-12
 
 Two security fixes have also been backported, so 4.3 = 4.0 + these two fixes.
 
