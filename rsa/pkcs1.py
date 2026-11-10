@@ -31,7 +31,7 @@ to your users.
 import hashlib
 import os
 
-from rsa._compat import range
+from rsa._compat import compare_digest, range
 from rsa import common, transform, core
 
 # ASN.1 codes that describe the hash algorithm used.
@@ -238,16 +238,24 @@ def decrypt(crypto, priv_key):
     # encrypted value (as leading zeroes do not influence the value of an
     # integer). This fixes CVE-2020-13757.
     if len(crypto) > blocksize:
+        # This is operating on public information, so doesn't need to be constant-time.
         raise DecryptionError('Decryption failed')
 
     # If we can't find the cleartext marker, decryption failed.
-    if cleartext[0:2] != b'\x00\x02':
-        raise DecryptionError('Decryption failed')
+    cleartext_marker_bad = not compare_digest(cleartext[:2], b'\x00\x02')
 
     # Find the 00 separator between the padding and the message
-    try:
-        sep_idx = cleartext.index(b'\x00', 2)
-    except ValueError:
+    sep_idx = cleartext.find(b'\x00', 2)
+
+    # sep_idx indicates the position of the `\x00` separator that separates the
+    # padding from the actual message. The padding should be at least 8 bytes
+    # long (see https://tools.ietf.org/html/rfc8017#section-7.2.2 step 3), which
+    # means the separator should be at least at index 10 (because of the
+    # `\x00\x02` marker that preceeds it).
+    sep_idx_bad = sep_idx < 10
+
+    anything_bad = cleartext_marker_bad | sep_idx_bad
+    if anything_bad:
         raise DecryptionError('Decryption failed')
 
     return cleartext[sep_idx + 1:]

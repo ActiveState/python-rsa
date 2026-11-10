@@ -182,3 +182,75 @@ class SignatureTest(unittest.TestCase):
         signature = signature + b'\00\00'
         with self.assertRaises(rsa.VerificationError):
             pkcs1.verify(message, signature, self.pub)
+
+
+class DecryptionFailureTest(unittest.TestCase):
+    """CVE-2020-25658: a bad marker or a missing separator still raises DecryptionError.
+
+    Both now fail through one combined check. A ciphertext longer than the key is
+    rejected earlier, by the length check, and ExtraZeroesTest covers it; short
+    padding is covered by PaddingSizeTest.
+    """
+
+    def setUp(self):
+        (self.pub, self.priv) = rsa.newkeys(512)
+        self.keylength = rsa.common.byte_size(self.pub.n)
+
+    def encrypt_raw(self, padded):
+        self.assertEqual(len(padded), self.keylength)
+        payload = rsa.transform.bytes2int(padded)
+        encrypted_value = rsa.core.encrypt_int(payload, self.pub.e, self.pub.n)
+        return rsa.transform.int2bytes(encrypted_value, self.keylength)
+
+    def block(self, marker, message, separator=b'\x00'):
+        pad_len = self.keylength - len(marker) - len(separator) - len(message)
+        return marker + b'\x01' * pad_len + separator + message
+
+    def test_valid_padding_decrypts(self):
+        # Control: a well-formed block built by block() decrypts, so the failures
+        # below come from the field each one breaks, not from the builder.
+        crypto = self.encrypt_raw(self.block(b'\x00\x02', b'secret'))
+        self.assertEqual(rsa.decrypt(crypto, self.priv), b'secret')
+
+    def test_bad_marker(self):
+        crypto = self.encrypt_raw(self.block(b'\x00\x01', b'secret'))
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(crypto, self.priv)
+
+    def test_no_separator(self):
+        crypto = self.encrypt_raw(self.block(b'\x00\x02', b'', separator=b''))
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(crypto, self.priv)
+
+
+class PaddingSizeTest(unittest.TestCase):
+    def test_too_little_padding(self):
+        """Padding less than 8 bytes should be rejected."""
+
+        # Construct key that will be small enough to need only 7 bytes of padding.
+        # This key is 168 bit long, and was generated with rsa.newkeys(nbits=168).
+        self.private_key = rsa.PrivateKey.load_pkcs1(b'''
+-----BEGIN RSA PRIVATE KEY-----
+MHkCAQACFgCIGbbNSkIRLtprxka9NgOf5UxgxCMCAwEAAQIVQqymO0gHubdEVS68
+CdCiWmOJxVfRAgwBQM+e1JJwMKmxSF0CCmya6CFxO8Evdn8CDACMM3AlVC4FhlN8
+3QIKC9cjoam/swMirwIMAR7Br9tdouoH7jAE
+-----END RSA PRIVATE KEY-----
+        ''')
+        self.public_key = rsa.PublicKey(n=self.private_key.n, e=self.private_key.e)
+
+        cyphertext = self.encrypt_with_short_padding(b'op je hoofd')
+        with self.assertRaises(rsa.DecryptionError):
+            rsa.decrypt(cyphertext, self.private_key)
+
+    def encrypt_with_short_padding(self, message):
+        # This is a copy of rsa.pkcs1.encrypt() adjusted to use the wrong padding length.
+        keylength = rsa.common.byte_size(self.public_key.n)
+
+        # The word 'padding' has 7 letters, so is one byte short of a valid padding length.
+        padded = b'\x00\x02padding\x00' + message
+
+        payload = rsa.transform.bytes2int(padded)
+        encrypted_value = rsa.core.encrypt_int(payload, self.public_key.e, self.public_key.n)
+        cyphertext = rsa.transform.int2bytes(encrypted_value, keylength)
+
+        return cyphertext
