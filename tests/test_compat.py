@@ -17,7 +17,7 @@
 import unittest
 import struct
 
-from rsa._compat import byte, is_bytes, range, xor_bytes
+from rsa._compat import _compare_digest, byte, is_bytes, range, xor_bytes
 
 
 class TestByte(unittest.TestCase):
@@ -78,3 +78,19 @@ class TestBytes(unittest.TestCase):
 
                 self.assertEqual(result, xor_bytes(second, first))
                 self.assertEqual(len(result), min_length)
+
+
+class TestCompareDigest(unittest.TestCase):
+    """The fallback used when hmac has no compare_digest (Python < 2.7.7)."""
+
+    def test_equal(self):
+        self.assertTrue(_compare_digest(b'\x00\x02', b'\x00\x02'))
+        self.assertTrue(_compare_digest(b'', b''))
+
+    def test_different(self):
+        self.assertFalse(_compare_digest(b'\x00\x02', b'\x00\x01'))
+        self.assertFalse(_compare_digest(b'\x01\x02', b'\x00\x02'))
+
+    def test_different_length(self):
+        self.assertFalse(_compare_digest(b'\x00\x02', b'\x00\x02\x00'))
+        self.assertFalse(_compare_digest(b'\x00', b''))

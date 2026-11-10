@@ -30,9 +30,8 @@ to your users.
 
 import hashlib
 import os
-from hmac import compare_digest
 
-from rsa._compat import range
+from rsa._compat import compare_digest, range
 from rsa import common, transform, core
 
 # ASN.1 codes that describe the hash algorithm used.

@@ -123,6 +123,26 @@ def xor_bytes(b1, b2):
     return bytes(x ^ y for x, y in zip(b1, b2))
 
 
+def _compare_digest(a, b):
+    """
+    Returns True when two bytes objects are equal, in time that does not
+    depend on where they differ. Stands in for hmac.compare_digest, which
+    Python 2.7 gained only in 2.7.7.
+    """
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(bytearray(a), bytearray(b)):
+        result |= x ^ y
+    return result == 0
+
+
+try:
+    from hmac import compare_digest
+except ImportError:
+    compare_digest = _compare_digest
+
+
 def get_word_alignment(num, force_arch=64,
                        _machine_word_size=MACHINE_WORD_SIZE):
     """
