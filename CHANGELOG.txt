@@ -1,7 +1,7 @@
 Python-RSA changelog
 ========================================
 
-Version 4.5.post1 - ActiveState security release
+Version 4.5.post1 - released 2026-11-10
 ----------------------------------------
 
 Python 2.7 security release of 4.5 from the ActiveState fork.

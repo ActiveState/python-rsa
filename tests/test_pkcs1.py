@@ -185,7 +185,12 @@ class SignatureTest(unittest.TestCase):
 
 
 class DecryptionFailureTest(unittest.TestCase):
-    """CVE-2020-25658: every malformed cleartext still fails, through one combined check."""
+    """CVE-2020-25658: a bad marker or a missing separator still raises DecryptionError.
+
+    Both now fail through one combined check. A ciphertext longer than the key is
+    rejected earlier, by the length check, and ExtraZeroesTest covers it; short
+    padding is covered by PaddingSizeTest.
+    """
 
     def setUp(self):
         (self.pub, self.priv) = rsa.newkeys(512)
@@ -202,6 +207,8 @@ class DecryptionFailureTest(unittest.TestCase):
         return marker + b'\x01' * pad_len + separator + message
 
     def test_valid_padding_decrypts(self):
+        # Control: a well-formed block built by block() decrypts, so the failures
+        # below come from the field each one breaks, not from the builder.
         crypto = self.encrypt_raw(self.block(b'\x00\x02', b'secret'))
         self.assertEqual(rsa.decrypt(crypto, self.priv), b'secret')
 
@@ -212,11 +219,6 @@ class DecryptionFailureTest(unittest.TestCase):
 
     def test_no_separator(self):
         crypto = self.encrypt_raw(self.block(b'\x00\x02', b'', separator=b''))
-        with self.assertRaises(rsa.DecryptionError):
-            rsa.decrypt(crypto, self.priv)
-
-    def test_crypto_longer_than_block(self):
-        crypto = b'\x00' + pkcs1.encrypt(b'secret', self.pub)
         with self.assertRaises(rsa.DecryptionError):
             rsa.decrypt(crypto, self.priv)
 
